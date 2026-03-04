@@ -2,28 +2,39 @@
   "manifest_version": 3,
   "name": "Vello AI Intelligence OS",
   "version": "1.0.0",
-  "description": "Modern AI Intelligence Operating System overlay for Vello.ai with intelligent model routing and specialized interfaces",
+  "description": "Modern AI Intelligence Operating System with Vello.ai and Ollama support",
   "permissions": [
     "activeTab",
     "scripting",
-    "webRequest"
+    "storage",
+    "webRequest",
+    "tabs"
   ],
   "host_permissions": [
     "https://vello.ai/*",
-    "http://localhost:3001/*"
+    "https://*.vello.ai/*",
+    "http://localhost:*/*",
+    "http://127.0.0.1:*/*",
+    "<all_urls>"
   ],
   "action": {
     "default_popup": "dist/popup.html",
-    "default_title": "Vello AI Intelligence OS"
+    "default_title": "Vello AI Intelligence OS",
+    "default_icon": {
+      "16": "dist/icons/icon-16.png",
+      "48": "dist/icons/icon-48.png",
+      "128": "dist/icons/icon-128.png"
+    }
   },
   "background": {
     "service_worker": "dist/background.js"
   },
   "content_scripts": [
     {
-      "matches": ["https://vello.ai/*"],
+      "matches": ["<all_urls>"],
       "js": ["dist/content.js"],
-      "css": ["dist/content.css"]
+      "css": ["dist/content.css"],
+      "run_at": "document_start"
     }
   ],
   "icons": {
@@ -33,8 +44,24 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["dist/overlay.js"],
-      "matches": ["https://vello.ai/*"]
+      "resources": ["dist/overlay.js", "dist/styles.css"],
+      "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "commands": {
+    "toggle-vello": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+V",
+        "mac": "Command+Shift+V"
+      },
+      "description": "Toggle Vello AI Intelligence OS"
+    },
+    "quick-chat": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+C",
+        "mac": "Command+Shift+C"
+      },
+      "description": "Quick chat with AI"
+    }
+  }
 }

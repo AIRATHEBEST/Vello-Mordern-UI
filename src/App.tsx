@@ -5,6 +5,7 @@ import Header from './components/Header'
 import ModelSelector from './components/ModelSelector'
 import SpecializedInterface from './components/SpecializedInterface'
 import MonitoringDashboard from './components/MonitoringDashboard'
+import APISettings from './components/APISettings'
 import { analytics } from './lib/analytics'
 import { Menu, X } from 'lucide-react'
 
@@ -13,6 +14,12 @@ export default function App() {
   const { sidebarOpen, setSidebarOpen, selectedModel, setLastIntent } = useOverlayStore()
 
   useEffect(() => {
+    // Initialize API provider settings
+    const savedProvider = localStorage.getItem('api_provider')
+    if (!savedProvider) {
+      localStorage.setItem('api_provider', 'vello')
+    }
+
     analytics.trackEvent('app_loaded', {
       timestamp: Date.now(),
     })
@@ -75,6 +82,7 @@ export default function App() {
         </div>
       </div>
       <MonitoringDashboard />
+      <APISettings />
     </div>
   )
 }
