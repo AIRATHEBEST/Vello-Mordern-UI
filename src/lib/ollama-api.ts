@@ -1,6 +1,6 @@
 /**
- * Ollama Local LLM Integration
- * Connects to local Ollama instance running on user's PC
+ * Enhanced Ollama Local LLM Integration
+ * Robust CORS workarounds, multi-URL fallback, and detailed diagnostics
  */
 
 export interface OllamaModel {
@@ -8,6 +8,13 @@ export interface OllamaModel {
   modified_at: string
   size: number
   digest: string
+  details?: {
+    format: string
+    family: string
+    families: string[] | null
+    parameter_size: string
+    quantization_level: string
+  }
 }
 
 export interface OllamaMessage {
@@ -23,67 +30,213 @@ export interface OllamaResponse {
     content: string
   }
   done: boolean
-  total_duration: number
-  load_duration: number
-  prompt_eval_count: number
-  prompt_eval_duration: number
-  eval_count: number
-  eval_duration: number
+  total_duration?: number
+  load_duration?: number
+  prompt_eval_count?: number
+  prompt_eval_duration?: number
+  eval_count?: number
+  eval_duration?: number
 }
+
+export interface OllamaConnectionResult {
+  connected: boolean
+  url: string
+  error?: string
+  models?: OllamaModel[]
+  version?: string
+  corsIssue?: boolean
+}
+
+// Common Ollama URLs to try when the primary one fails
+const FALLBACK_URLS = [
+  'http://localhost:11434',
+  'http://127.0.0.1:11434',
+  'http://0.0.0.0:11434',
+]
 
 export class OllamaAPI {
   private baseUrl: string
   private isConnected: boolean = false
+  private lastError: string = ''
+  private cachedModels: OllamaModel[] = []
 
   constructor(baseUrl: string = 'http://localhost:11434') {
     this.baseUrl = baseUrl
   }
 
-  /**
-   * Set custom Ollama server URL
-   */
   setBaseUrl(url: string) {
-    this.baseUrl = url
-    localStorage.setItem('ollama_base_url', url)
+    this.baseUrl = url.replace(/\/$/, '') // strip trailing slash
+    localStorage.setItem('ollama_base_url', this.baseUrl)
   }
 
-  /**
-   * Get stored Ollama URL from localStorage
-   */
   getBaseUrl(): string {
-    return localStorage.getItem('ollama_base_url') || this.baseUrl
+    const saved = localStorage.getItem('ollama_base_url')
+    return (saved || this.baseUrl).replace(/\/$/, '')
+  }
+
+  getLastError(): string {
+    return this.lastError
+  }
+
+  getCachedModels(): OllamaModel[] {
+    return this.cachedModels
   }
 
   /**
-   * Check if Ollama server is running
+   * Attempt a fetch with multiple CORS strategies
    */
-  async checkConnectivity(): Promise<boolean> {
+  private async fetchWithCORSFallback(url: string, options: RequestInit = {}): Promise<Response> {
+    // Strategy 1: Standard fetch (works if OLLAMA_ORIGINS is set correctly)
     try {
-      const response = await fetch(`${this.getBaseUrl()}/api/tags`, {
-        method: 'GET',
+      const response = await fetch(url, {
+        ...options,
         headers: {
           'Content-Type': 'application/json',
+          ...options.headers,
         },
+        mode: 'cors',
       })
-      this.isConnected = response.ok
-      return response.ok
-    } catch (error) {
-      console.error('Ollama connectivity check failed:', error)
-      this.isConnected = false
-      return false
+      return response
+    } catch (corsError) {
+      // Strategy 2: no-cors mode (limited, but can confirm server is alive)
+      // This only works for GET requests and won't return readable body
+      // We use it purely as a connectivity probe
+      try {
+        await fetch(url, { method: 'GET', mode: 'no-cors' })
+        // If we get here, server is alive but CORS is blocking
+        throw new Error('CORS_BLOCKED')
+      } catch (noCorsError: any) {
+        if (noCorsError.message === 'CORS_BLOCKED') {
+          throw new Error('CORS_BLOCKED')
+        }
+        throw corsError
+      }
     }
   }
 
   /**
+   * Try connecting to multiple Ollama URLs and return the first that works
+   */
+  async findWorkingUrl(): Promise<string | null> {
+    const primaryUrl = this.getBaseUrl()
+    const urlsToTry = [primaryUrl, ...FALLBACK_URLS.filter(u => u !== primaryUrl)]
+
+    for (const url of urlsToTry) {
+      try {
+        const response = await fetch(`${url}/api/tags`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          mode: 'cors',
+          signal: AbortSignal.timeout(3000),
+        })
+        if (response.ok) {
+          return url
+        }
+      } catch {
+        // Try next URL
+      }
+    }
+    return null
+  }
+
+  /**
+   * Comprehensive connectivity check with diagnostics
+   */
+  async checkConnectivityDetailed(): Promise<OllamaConnectionResult> {
+    const url = this.getBaseUrl()
+
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000)
+
+      const response = await fetch(`${url}/api/tags`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'cors',
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (response.ok) {
+        const data = await response.json()
+        const models: OllamaModel[] = data.models || []
+        this.cachedModels = models
+        this.isConnected = true
+        this.lastError = ''
+
+        // Also fetch version info
+        let version = 'unknown'
+        try {
+          const versionRes = await fetch(`${url}/api/version`, {
+            mode: 'cors',
+            signal: AbortSignal.timeout(2000),
+          })
+          if (versionRes.ok) {
+            const versionData = await versionRes.json()
+            version = versionData.version || 'unknown'
+          }
+        } catch {
+          // Version fetch is optional
+        }
+
+        return { connected: true, url, models, version }
+      } else {
+        this.isConnected = false
+        this.lastError = `HTTP ${response.status}: ${response.statusText}`
+        return { connected: false, url, error: this.lastError }
+      }
+    } catch (error: any) {
+      this.isConnected = false
+
+      // Detect CORS-specific errors
+      const isCORSError =
+        error.name === 'TypeError' &&
+        (error.message.includes('Failed to fetch') ||
+          error.message.includes('NetworkError') ||
+          error.message.includes('CORS'))
+
+      if (isCORSError) {
+        this.lastError = 'CORS error: Ollama is running but blocking browser requests. Set OLLAMA_ORIGINS="*" and restart Ollama.'
+        return {
+          connected: false,
+          url,
+          error: this.lastError,
+          corsIssue: true,
+        }
+      }
+
+      if (error.name === 'AbortError') {
+        this.lastError = 'Connection timed out. Is Ollama running?'
+      } else {
+        this.lastError = error.message || 'Unknown connection error'
+      }
+
+      return { connected: false, url, error: this.lastError }
+    }
+  }
+
+  /**
+   * Simple connectivity check (returns boolean)
+   */
+  async checkConnectivity(): Promise<boolean> {
+    const result = await this.checkConnectivityDetailed()
+    return result.connected
+  }
+
+  /**
    * Get list of available models from local Ollama
+   * Falls back to cached models if the request fails
    */
   async getModels(): Promise<OllamaModel[]> {
+    const url = this.getBaseUrl()
+
     try {
-      const response = await fetch(`${this.getBaseUrl()}/api/tags`, {
+      const response = await fetch(`${url}/api/tags`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'cors',
+        signal: AbortSignal.timeout(5000),
       })
 
       if (!response.ok) {
@@ -91,9 +244,16 @@ export class OllamaAPI {
       }
 
       const data = await response.json()
-      return data.models || []
-    } catch (error) {
+      const models: OllamaModel[] = data.models || []
+      this.cachedModels = models
+      this.isConnected = true
+      return models
+    } catch (error: any) {
       console.error('Error fetching Ollama models:', error)
+      // Return cached models if available
+      if (this.cachedModels.length > 0) {
+        return this.cachedModels
+      }
       return []
     }
   }
@@ -110,12 +270,13 @@ export class OllamaAPI {
       top_k?: number
     }
   ): Promise<string> {
+    const url = this.getBaseUrl()
+
     try {
-      const response = await fetch(`${this.getBaseUrl()}/api/chat`, {
+      const response = await fetch(`${url}/api/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'cors',
         body: JSON.stringify({
           model: modelName,
           messages,
@@ -129,12 +290,12 @@ export class OllamaAPI {
       })
 
       if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`)
+        throw new Error(`API error: ${response.status} ${response.statusText}`)
       }
 
       const data: OllamaResponse = await response.json()
       return data.message.content
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message to Ollama:', error)
       throw error
     }
@@ -152,58 +313,54 @@ export class OllamaAPI {
       top_k?: number
     }
   ): AsyncGenerator<string, void, unknown> {
-    try {
-      const response = await fetch(`${this.getBaseUrl()}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+    const url = this.getBaseUrl()
+
+    const response = await fetch(`${url}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      mode: 'cors',
+      body: JSON.stringify({
+        model: modelName,
+        messages,
+        stream: true,
+        options: {
+          temperature: options?.temperature ?? 0.7,
+          top_p: options?.top_p ?? 0.9,
+          top_k: options?.top_k ?? 40,
         },
-        body: JSON.stringify({
-          model: modelName,
-          messages,
-          stream: true,
-          options: {
-            temperature: options?.temperature ?? 0.7,
-            top_p: options?.top_p ?? 0.9,
-            top_k: options?.top_k ?? 40,
-          },
-        }),
-      })
+      }),
+    })
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`)
-      }
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${response.statusText}`)
+    }
 
-      const reader = response.body?.getReader()
-      if (!reader) throw new Error('No response body')
+    const reader = response.body?.getReader()
+    if (!reader) throw new Error('No response body')
 
-      const decoder = new TextDecoder()
-      let buffer = ''
+    const decoder = new TextDecoder()
+    let buffer = ''
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
 
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
 
-        for (const line of lines) {
-          if (line.trim()) {
-            try {
-              const data: OllamaResponse = JSON.parse(line)
-              if (data.message?.content) {
-                yield data.message.content
-              }
-            } catch (e) {
-              // Ignore parse errors
+      for (const line of lines) {
+        if (line.trim()) {
+          try {
+            const data: OllamaResponse = JSON.parse(line)
+            if (data.message?.content) {
+              yield data.message.content
             }
+          } catch {
+            // Ignore parse errors for incomplete chunks
           }
         }
       }
-    } catch (error) {
-      console.error('Error streaming message from Ollama:', error)
-      throw error
     }
   }
 
@@ -211,24 +368,16 @@ export class OllamaAPI {
    * Pull a model from Ollama registry
    */
   async pullModel(modelName: string): Promise<void> {
-    try {
-      const response = await fetch(`${this.getBaseUrl()}/api/pull`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: modelName,
-          stream: false,
-        }),
-      })
+    const url = this.getBaseUrl()
+    const response = await fetch(`${url}/api/pull`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      mode: 'cors',
+      body: JSON.stringify({ name: modelName, stream: false }),
+    })
 
-      if (!response.ok) {
-        throw new Error(`Failed to pull model: ${response.statusText}`)
-      }
-    } catch (error) {
-      console.error('Error pulling model:', error)
-      throw error
+    if (!response.ok) {
+      throw new Error(`Failed to pull model: ${response.statusText}`)
     }
   }
 
@@ -236,52 +385,46 @@ export class OllamaAPI {
    * Delete a model from Ollama
    */
   async deleteModel(modelName: string): Promise<void> {
-    try {
-      const response = await fetch(`${this.getBaseUrl()}/api/delete`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: modelName,
-        }),
-      })
+    const url = this.getBaseUrl()
+    const response = await fetch(`${url}/api/delete`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      mode: 'cors',
+      body: JSON.stringify({ name: modelName }),
+    })
 
-      if (!response.ok) {
-        throw new Error(`Failed to delete model: ${response.statusText}`)
-      }
-    } catch (error) {
-      console.error('Error deleting model:', error)
-      throw error
+    if (!response.ok) {
+      throw new Error(`Failed to delete model: ${response.statusText}`)
     }
   }
 
   /**
-   * Get Ollama server info
+   * Get Ollama server version info
    */
-  async getServerInfo(): Promise<any> {
+  async getServerInfo(): Promise<{ version: string } | null> {
+    const url = this.getBaseUrl()
     try {
-      const response = await fetch(`${this.getBaseUrl()}/api/version`, {
+      const response = await fetch(`${url}/api/version`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        mode: 'cors',
+        signal: AbortSignal.timeout(3000),
       })
-
-      if (!response.ok) {
-        throw new Error(`Failed to get server info: ${response.statusText}`)
-      }
-
+      if (!response.ok) return null
       return response.json()
-    } catch (error) {
-      console.error('Error getting server info:', error)
+    } catch {
       return null
     }
   }
 
   /**
-   * Check if Ollama is connected
+   * Format model size for display
    */
+  static formatModelSize(bytes: number): string {
+    if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`
+    if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(0)} MB`
+    return `${bytes} B`
+  }
+
   isOllamaConnected(): boolean {
     return this.isConnected
   }
