@@ -35,10 +35,14 @@ export default function OllamaSettings({ onModelSelect, selectedModel }: OllamaS
   const [showCORSFix, setShowCORSFix] = useState(false)
   const [showTunnelGuide, setShowTunnelGuide] = useState(false)
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null)
+  const [useCORSProxy, setUseCORSProxy] = useState(false)
 
   useEffect(() => {
     const savedUrl = localStorage.getItem('ollama_base_url') || 'http://localhost:11434'
     const isRemote = localStorage.getItem('ollama_is_remote') === 'true'
+    const savedUseCORSProxy = localStorage.getItem('ollama_use_cors_proxy') === 'true'
+
+    setUseCORSProxy(savedUseCORSProxy)
 
     // Auto-detect ngrok URL and switch to Tunnel mode
     if (savedUrl.includes('ngrok') || (isRemote && savedUrl.startsWith('https://'))) {
@@ -201,6 +205,29 @@ export default function OllamaSettings({ onModelSelect, selectedModel }: OllamaS
             >
               Setup guide →
             </button>
+          </p>
+        </div>
+      )}
+
+      {/* CORS Proxy Toggle */}
+      {mode === 'remote' && (
+        <div className="space-y-2 rounded-lg bg-slate-800/50 border border-slate-700 p-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={useCORSProxy}
+              onChange={(e) => {
+                const newValue = e.target.checked
+                setUseCORSProxy(newValue)
+                ollamaAPI.setUseCORSProxy(newValue)
+                setTimeout(() => handleCheck(), 100)
+              }}
+              className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-purple-600 focus:ring-purple-500"
+            />
+            <span className="text-xs font-medium text-slate-300">Use CORS Proxy</span>
+          </label>
+          <p className="text-xs text-slate-500 pl-6">
+            Enable if you see 403 errors. Routes through a public CORS proxy.
           </p>
         </div>
       )}

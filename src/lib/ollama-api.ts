@@ -61,16 +61,27 @@ const FALLBACK_URLS = [
   'http://0.0.0.0:11434',
 ]
 
+// CORS Proxy services (free tier)
+const CORS_PROXIES = [
+  'https://cors-anywhere.herokuapp.com',
+  'https://api.allorigins.win/raw?url=',
+  'https://thingproxy.freeboard.io/fetch/',
+]
+
 export class OllamaAPI {
   private baseUrl: string
   private isConnected: boolean = false
   private lastError: string = ''
   private cachedModels: OllamaModel[] = []
   private isRemoteMode: boolean = false
+  private useCORSProxy: boolean = false
 
   constructor(baseUrl: string = 'http://localhost:11434') {
     this.baseUrl = baseUrl.replace(/\/$/, '')
     this.isRemoteMode = baseUrl.startsWith('https://')
+    // Auto-enable CORS proxy for ngrok URLs with CORS issues
+    const savedUseCORSProxy = localStorage.getItem('ollama_use_cors_proxy')
+    this.useCORSProxy = savedUseCORSProxy === 'true'
   }
 
   setBaseUrl(url: string) {
@@ -78,6 +89,24 @@ export class OllamaAPI {
     this.isRemoteMode = this.baseUrl.startsWith('https://')
     localStorage.setItem('ollama_base_url', this.baseUrl)
     localStorage.setItem('ollama_is_remote', String(this.isRemoteMode))
+  }
+
+  setUseCORSProxy(use: boolean) {
+    this.useCORSProxy = use
+    localStorage.setItem('ollama_use_cors_proxy', String(use))
+  }
+
+  getUseCORSProxy(): boolean {
+    return this.useCORSProxy
+  }
+
+  /**
+   * Wrap URL with CORS proxy if enabled
+   */
+  private wrapWithCORSProxy(url: string): string {
+    if (!this.useCORSProxy) return url
+    // Use allorigins as it's most reliable
+    return `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
   }
 
   getBaseUrl(): string {
@@ -175,7 +204,8 @@ export class OllamaAPI {
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
-      const response = await fetch(`${url}/api/tags`, {
+      const apiUrl = this.wrapWithCORSProxy(`${url}/api/tags`)
+      const response = await fetch(apiUrl, {
         method: 'GET',
         headers,
         mode: 'cors',
@@ -273,7 +303,8 @@ export class OllamaAPI {
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
-      const response = await fetch(`${url}/api/tags`, {
+      const apiUrl = this.wrapWithCORSProxy(`${url}/api/tags`)
+      const response = await fetch(apiUrl, {
         method: 'GET',
         headers,
         mode: 'cors',
