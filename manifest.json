@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Vello AI Intelligence OS",
+  "version": "1.0.0",
+  "description": "Modern AI Intelligence Operating System overlay for Vello.ai with intelligent model routing and specialized interfaces",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "https://vello.ai/*",
+    "http://localhost:3001/*"
+  ],
+  "action": {
+    "default_popup": "dist/popup.html",
+    "default_title": "Vello AI Intelligence OS"
+  },
+  "background": {
+    "service_worker": "dist/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://vello.ai/*"],
+      "js": ["dist/content.js"],
+      "css": ["dist/content.css"]
+    }
+  ],
+  "icons": {
+    "16": "dist/icons/icon-16.png",
+    "48": "dist/icons/icon-48.png",
+    "128": "dist/icons/icon-128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["dist/overlay.js"],
+      "matches": ["https://vello.ai/*"]
+    }
+  ]
+}
