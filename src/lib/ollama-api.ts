@@ -101,7 +101,18 @@ export class OllamaAPI {
   }
 
   /**
-   * Wrap URL with CORS proxy if enabled
+   * Wrap URL with Vercel proxy (server-side, no CORS)
+   */
+  private wrapWithVercelProxy(url: string): string {
+    // For tunnel URLs, use the Vercel API proxy
+    if (this.isRemoteMode) {
+      return `/api/ollama-proxy?url=${encodeURIComponent(url)}`
+    }
+    return url
+  }
+
+  /**
+   * Wrap URL with CORS proxy if enabled (fallback)
    */
   private wrapWithCORSProxy(url: string): string {
     if (!this.useCORSProxy) return url
@@ -204,7 +215,7 @@ export class OllamaAPI {
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
-      const apiUrl = this.wrapWithCORSProxy(`${url}/api/tags`)
+      const apiUrl = this.wrapWithVercelProxy(`${url}/api/tags`) || this.wrapWithCORSProxy(`${url}/api/tags`)
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers,
@@ -303,7 +314,7 @@ export class OllamaAPI {
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
-      const apiUrl = this.wrapWithCORSProxy(`${url}/api/tags`)
+      const apiUrl = this.wrapWithVercelProxy(`${url}/api/tags`) || this.wrapWithCORSProxy(`${url}/api/tags`)
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers,
@@ -347,7 +358,8 @@ export class OllamaAPI {
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
-      const response = await fetch(`${url}/api/chat`, {
+      const apiUrl = this.wrapWithVercelProxy(`${url}/api/chat`) || `${url}/api/chat`
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers,
         mode: 'cors',
