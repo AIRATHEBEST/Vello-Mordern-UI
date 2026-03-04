@@ -1,23 +1,26 @@
 import { useState, useEffect } from 'react'
 import { useOverlayStore } from './store/overlayStore'
-import { intentRouter } from './lib/intent-router'
+import { advancedIntentRouter, IntentAnalysis } from './lib/advanced-intent-router'
 import MinimalHeader from './components/MinimalHeader'
-import CommandCenter from './components/CommandCenter'
+import EnhancedCommandCenter from './components/EnhancedCommandCenter'
 import CapabilitiesModal from './components/CapabilitiesModal'
+import ProviderConfigPanel from './components/ProviderConfigPanel'
 import MonitoringDashboard from './components/MonitoringDashboard'
 import APISettings from './components/APISettings'
 import { analytics } from './lib/analytics'
 
 export default function App() {
   const [showCapabilities, setShowCapabilities] = useState(false)
+  const [showProviderConfig, setShowProviderConfig] = useState(false)
   const [lastIntent, setLastIntent] = useState<string>('')
+  const [lastAnalysis, setLastAnalysis] = useState<IntentAnalysis | null>(null)
   const { setLastIntent: storeLastIntent } = useOverlayStore()
 
   useEffect(() => {
     // Initialize API provider settings
-    const savedProvider = localStorage.getItem('api_provider')
+    const savedProvider = localStorage.getItem('selected_provider')
     if (!savedProvider) {
-      localStorage.setItem('api_provider', 'vello')
+      localStorage.setItem('selected_provider', 'ollama')
     }
 
     analytics.trackEvent('app_loaded', {
@@ -25,12 +28,13 @@ export default function App() {
     })
   }, [])
 
-  const handleIntentDetection = (input: string) => {
-    const analysis = intentRouter.analyzeIntent(input)
+  const handleIntentDetection = (input: string, analysis: IntentAnalysis) => {
     setLastIntent(input)
+    setLastAnalysis(analysis)
     storeLastIntent(analysis)
     analytics.trackEvent('intent_detected', {
-      intent: analysis.intent,
+      capability: analysis.capability,
+      provider: analysis.provider,
       confidence: analysis.confidence,
     })
   }
@@ -46,10 +50,13 @@ export default function App() {
       {/* Main content */}
       <div className="relative z-10 flex flex-col h-screen">
         {/* Minimal header */}
-        <MinimalHeader onShowCapabilities={() => setShowCapabilities(true)} />
+        <MinimalHeader
+          onShowCapabilities={() => setShowCapabilities(true)}
+          onShowProviderConfig={() => setShowProviderConfig(true)}
+        />
 
         {/* Command center - the heart of the interface */}
-        <CommandCenter
+        <EnhancedCommandCenter
           onIntentDetection={handleIntentDetection}
           onShowCapabilities={() => setShowCapabilities(true)}
         />
@@ -58,6 +65,11 @@ export default function App() {
       {/* Capabilities modal overlay */}
       {showCapabilities && (
         <CapabilitiesModal onClose={() => setShowCapabilities(false)} />
+      )}
+
+      {/* Provider configuration panel */}
+      {showProviderConfig && (
+        <ProviderConfigPanel onClose={() => setShowProviderConfig(false)} />
       )}
 
       {/* Monitoring and settings */}

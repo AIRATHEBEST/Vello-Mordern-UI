@@ -1,10 +1,14 @@
-import { Zap, Settings, HelpCircle } from 'lucide-react'
+import { Zap, Settings, HelpCircle, Sliders } from 'lucide-react'
 
 interface MinimalHeaderProps {
   onShowCapabilities: () => void
+  onShowProviderConfig?: () => void
 }
 
-export default function MinimalHeader({ onShowCapabilities }: MinimalHeaderProps) {
+export default function MinimalHeader({
+  onShowCapabilities,
+  onShowProviderConfig,
+}: MinimalHeaderProps) {
   return (
     <header className="sticky top-0 z-20 border-b border-slate-800/30 bg-black/50 backdrop-blur-md">
       <div className="px-6 py-3 flex items-center justify-between">
@@ -25,6 +29,15 @@ export default function MinimalHeader({ onShowCapabilities }: MinimalHeaderProps
           >
             <Zap size={18} />
           </button>
+          {onShowProviderConfig && (
+            <button
+              onClick={onShowProviderConfig}
+              className="p-2 rounded-lg hover:bg-slate-800/50 transition-colors text-slate-400 hover:text-slate-200"
+              title="Provider Settings"
+            >
+              <Sliders size={18} />
+            </button>
+          )}
           <button
             className="p-2 rounded-lg hover:bg-slate-800/50 transition-colors text-slate-400 hover:text-slate-200"
             title="Help"
