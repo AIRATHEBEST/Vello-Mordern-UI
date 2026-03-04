@@ -117,9 +117,11 @@ export default function APISettings() {
             <p className="font-medium text-slate-300">Quick Fixes:</p>
             {provider === 'ollama' ? (
               <>
-                <p>1. Set env var: <code className="bg-slate-900 px-1 rounded">OLLAMA_ORIGINS="*"</code></p>
-                <p>2. Restart Ollama app/service</p>
-                <p>3. Ensure model is pulled: <code className="bg-slate-900 px-1 rounded">ollama pull llama2</code></p>
+                <p className="text-blue-400 font-bold">Ollama Desktop App Fix:</p>
+                <p>1. Quit Ollama (tray icon)</p>
+                <p>2. Run in CMD: <code className="bg-slate-900 px-1 rounded">setx OLLAMA_ORIGINS "*"</code></p>
+                <p>3. Restart Ollama app</p>
+                <p className="mt-2">4. Ensure model is pulled: <code className="bg-slate-900 px-1 rounded">ollama pull llama2</code></p>
               </>
             ) : provider === 'manus' ? (
               <p>Get your API key from <a href="https://manus.im" className="text-orange-400">manus.im</a></p>
