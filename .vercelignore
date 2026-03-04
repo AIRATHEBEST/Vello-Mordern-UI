@@ -1,0 +1,9 @@
+node_modules
+.git
+.env.local
+.env.*.local
+dist-extension
+dist-extension-prod
+supabase
+*.md
+.gitignore
