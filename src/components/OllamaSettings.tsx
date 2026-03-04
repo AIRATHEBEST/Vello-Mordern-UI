@@ -36,6 +36,7 @@ export default function OllamaSettings({ onModelSelect, selectedModel }: OllamaS
   const [showTunnelGuide, setShowTunnelGuide] = useState(false)
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null)
   const [useCORSProxy, setUseCORSProxy] = useState(false)
+  const [showExtensionGuide, setShowExtensionGuide] = useState(false)
 
   useEffect(() => {
     const savedUrl = localStorage.getItem('ollama_base_url') || 'http://localhost:11434'
@@ -229,6 +230,52 @@ export default function OllamaSettings({ onModelSelect, selectedModel }: OllamaS
           <p className="text-xs text-slate-500 pl-6">
             Enable if you see 403 errors. Routes through a public CORS proxy.
           </p>
+        </div>
+      )}
+
+      {/* Browser Extension Guide (Easy Fix) */}
+      {mode === 'remote' && (
+        <div className="rounded-lg border border-slate-700 overflow-hidden">
+          <button
+            onClick={() => setShowExtensionGuide(!showExtensionGuide)}
+            className="w-full flex items-center justify-between px-3 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 text-sm transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Lock size={14} className="text-green-400" />
+              <span className="font-medium">Easy Fix: Browser Extension (Free Forever)</span>
+            </div>
+            {showExtensionGuide ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+
+          {showExtensionGuide && (
+            <div className="px-3 py-3 bg-slate-900 space-y-3 text-xs text-slate-300">
+              <p className="text-slate-400">
+                Install a free browser extension that disables CORS checks. This is the easiest, most reliable solution.
+              </p>
+              <div className="space-y-2">
+                <p className="font-semibold text-slate-200">Option 1: CORS Unblock (Recommended)</p>
+                <ol className="list-decimal list-inside space-y-0.5 text-slate-400 ml-2">
+                  <li>Go to <a href="https://chrome.google.com/webstore/detail/cors-unblock/lfhmikememgdcahcdlaciloounmfbmnp" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">Chrome Web Store</a></li>
+                  <li>Click "Add to Chrome"</li>
+                  <li>Click the extension icon in your toolbar</li>
+                  <li>Toggle it ON (blue)</li>
+                  <li>Refresh Vello and click Connect</li>
+                </ol>
+              </div>
+              <div className="space-y-2 pt-2 border-t border-slate-700">
+                <p className="font-semibold text-slate-200">Option 2: Allow CORS</p>
+                <ol className="list-decimal list-inside space-y-0.5 text-slate-400 ml-2">
+                  <li>Go to <a href="https://chrome.google.com/webstore/detail/allow-cors-access-control/lhobafahddgcelffkeicbaginigeejlf" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">Chrome Web Store</a></li>
+                  <li>Click "Add to Chrome"</li>
+                  <li>Toggle it ON</li>
+                  <li>Refresh Vello and click Connect</li>
+                </ol>
+              </div>
+              <p className="text-slate-500 pt-2 border-t border-slate-700">
+                <strong>Note:</strong> The extension only works on this site and only when you toggle it ON. It's completely safe and free forever.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
