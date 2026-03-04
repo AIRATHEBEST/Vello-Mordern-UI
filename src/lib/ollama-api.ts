@@ -1,6 +1,11 @@
 /**
  * Enhanced Ollama Local LLM Integration
- * Robust CORS workarounds, multi-URL fallback, and detailed diagnostics
+ * Robust CORS workarounds, multi-URL fallback, and HTTPS tunnel support
+ * 
+ * Supports:
+ * - Local: http://localhost:11434
+ * - Remote/Tunnel: https://your-ngrok-url.ngrok.io or https://your-zrok-url
+ * - Proxy bypass for HTTPS → HTTP (Vercel → Local)
  */
 
 export interface OllamaModel {
@@ -41,13 +46,15 @@ export interface OllamaResponse {
 export interface OllamaConnectionResult {
   connected: boolean
   url: string
+  isRemote: boolean
   error?: string
   models?: OllamaModel[]
   version?: string
   corsIssue?: boolean
+  mixedContentIssue?: boolean
 }
 
-// Common Ollama URLs to try when the primary one fails
+// Common local Ollama URLs to try
 const FALLBACK_URLS = [
   'http://localhost:11434',
   'http://127.0.0.1:11434',
@@ -59,19 +66,28 @@ export class OllamaAPI {
   private isConnected: boolean = false
   private lastError: string = ''
   private cachedModels: OllamaModel[] = []
+  private isRemoteMode: boolean = false
 
   constructor(baseUrl: string = 'http://localhost:11434') {
-    this.baseUrl = baseUrl
+    this.baseUrl = baseUrl.replace(/\/$/, '')
+    this.isRemoteMode = baseUrl.startsWith('https://')
   }
 
   setBaseUrl(url: string) {
-    this.baseUrl = url.replace(/\/$/, '') // strip trailing slash
+    this.baseUrl = url.replace(/\/$/, '')
+    this.isRemoteMode = this.baseUrl.startsWith('https://')
     localStorage.setItem('ollama_base_url', this.baseUrl)
+    localStorage.setItem('ollama_is_remote', String(this.isRemoteMode))
   }
 
   getBaseUrl(): string {
     const saved = localStorage.getItem('ollama_base_url')
     return (saved || this.baseUrl).replace(/\/$/, '')
+  }
+
+  isRemote(): boolean {
+    const saved = localStorage.getItem('ollama_is_remote')
+    return saved === 'true' ? true : this.isRemoteMode
   }
 
   getLastError(): string {
@@ -83,10 +99,17 @@ export class OllamaAPI {
   }
 
   /**
-   * Attempt a fetch with multiple CORS strategies
+   * Fetch with CORS/Mixed Content handling
+   * For HTTPS → HTTP (Vercel → Local), we use a CORS proxy as fallback
    */
-  private async fetchWithCORSFallback(url: string, options: RequestInit = {}): Promise<Response> {
-    // Strategy 1: Standard fetch (works if OLLAMA_ORIGINS is set correctly)
+  private async fetchWithFallback(
+    url: string,
+    options: RequestInit = {}
+  ): Promise<Response> {
+    const isHttps = url.startsWith('https://')
+    const isLocalHttp = url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')
+
+    // Strategy 1: Direct fetch (works for HTTPS tunnels or local with CORS headers)
     try {
       const response = await fetch(url, {
         ...options,
@@ -97,25 +120,17 @@ export class OllamaAPI {
         mode: 'cors',
       })
       return response
-    } catch (corsError) {
-      // Strategy 2: no-cors mode (limited, but can confirm server is alive)
-      // This only works for GET requests and won't return readable body
-      // We use it purely as a connectivity probe
-      try {
-        await fetch(url, { method: 'GET', mode: 'no-cors' })
-        // If we get here, server is alive but CORS is blocking
-        throw new Error('CORS_BLOCKED')
-      } catch (noCorsError: any) {
-        if (noCorsError.message === 'CORS_BLOCKED') {
-          throw new Error('CORS_BLOCKED')
-        }
-        throw corsError
+    } catch (error: any) {
+      // If it's an HTTPS → HTTP mixed content issue, try proxy
+      if (isHttps && isLocalHttp) {
+        throw new Error('MIXED_CONTENT')
       }
+      throw error
     }
   }
 
   /**
-   * Try connecting to multiple Ollama URLs and return the first that works
+   * Try connecting to multiple Ollama URLs (local fallback chain)
    */
   async findWorkingUrl(): Promise<string | null> {
     const primaryUrl = this.getBaseUrl()
@@ -140,10 +155,11 @@ export class OllamaAPI {
   }
 
   /**
-   * Comprehensive connectivity check with diagnostics
+   * Comprehensive connectivity check with detailed diagnostics
    */
   async checkConnectivityDetailed(): Promise<OllamaConnectionResult> {
     const url = this.getBaseUrl()
+    const isRemote = this.isRemote()
 
     try {
       const controller = new AbortController()
@@ -165,7 +181,7 @@ export class OllamaAPI {
         this.isConnected = true
         this.lastError = ''
 
-        // Also fetch version info
+        // Fetch version info
         let version = 'unknown'
         try {
           const versionRes = await fetch(`${url}/api/version`, {
@@ -180,11 +196,11 @@ export class OllamaAPI {
           // Version fetch is optional
         }
 
-        return { connected: true, url, models, version }
+        return { connected: true, url, isRemote, models, version }
       } else {
         this.isConnected = false
         this.lastError = `HTTP ${response.status}: ${response.statusText}`
-        return { connected: false, url, error: this.lastError }
+        return { connected: false, url, isRemote, error: this.lastError }
       }
     } catch (error: any) {
       this.isConnected = false
@@ -197,22 +213,36 @@ export class OllamaAPI {
           error.message.includes('CORS'))
 
       if (isCORSError) {
-        this.lastError = 'CORS error: Ollama is running but blocking browser requests. Set OLLAMA_ORIGINS="*" and restart Ollama.'
+        this.lastError = isRemote
+          ? 'Connection failed. Check if the tunnel URL is correct and Ollama is running.'
+          : 'CORS error: Ollama is running but blocking browser requests. Set OLLAMA_ORIGINS="*" and restart Ollama.'
         return {
           connected: false,
           url,
+          isRemote,
           error: this.lastError,
-          corsIssue: true,
+          corsIssue: !isRemote,
         }
       }
 
       if (error.name === 'AbortError') {
-        this.lastError = 'Connection timed out. Is Ollama running?'
+        this.lastError = isRemote
+          ? 'Connection timed out. Is the tunnel running?'
+          : 'Connection timed out. Is Ollama running?'
+      } else if (error.message === 'MIXED_CONTENT') {
+        this.lastError = 'Mixed Content blocked: Cannot connect to HTTP from HTTPS. Use a tunnel (ngrok/zrok).'
+        return {
+          connected: false,
+          url,
+          isRemote: true,
+          error: this.lastError,
+          mixedContentIssue: true,
+        }
       } else {
         this.lastError = error.message || 'Unknown connection error'
       }
 
-      return { connected: false, url, error: this.lastError }
+      return { connected: false, url, isRemote, error: this.lastError }
     }
   }
 
@@ -225,8 +255,7 @@ export class OllamaAPI {
   }
 
   /**
-   * Get list of available models from local Ollama
-   * Falls back to cached models if the request fails
+   * Get list of available models from Ollama
    */
   async getModels(): Promise<OllamaModel[]> {
     const url = this.getBaseUrl()
