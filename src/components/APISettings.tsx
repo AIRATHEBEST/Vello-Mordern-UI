@@ -4,16 +4,17 @@ import { apiProvider } from '../lib/api-provider'
 
 export default function APISettings() {
   const [isOpen, setIsOpen] = useState(false)
-  const [provider, setProvider] = useState<'vello' | 'ollama'>('vello')
+  const [provider, setProvider] = useState<'vello' | 'ollama' | 'manus'>('vello')
   const [velloApiKey, setVelloApiKey] = useState('')
   const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434')
+  const [manusApiKey, setManusApiKey] = useState('')
   const [isConnected, setIsConnected] = useState(false)
   const [isChecking, setIsChecking] = useState(false)
   const [modelCount, setModelCount] = useState(0)
   const [status, setStatus] = useState<string>('')
 
   useEffect(() => {
-    const savedProvider = localStorage.getItem('api_provider') as 'vello' | 'ollama'
+    const savedProvider = localStorage.getItem('api_provider') as 'vello' | 'ollama' | 'manus'
     if (savedProvider) setProvider(savedProvider)
 
     const savedVelloKey = localStorage.getItem('vello_api_key')
@@ -21,6 +22,9 @@ export default function APISettings() {
 
     const savedOllamaUrl = localStorage.getItem('ollama_base_url')
     if (savedOllamaUrl) setOllamaUrl(savedOllamaUrl)
+
+    const savedManusKey = localStorage.getItem('manus_api_key')
+    if (savedManusKey) setManusApiKey(savedManusKey)
 
     checkStatus()
   }, [])
@@ -40,25 +44,14 @@ export default function APISettings() {
     }
   }
 
-  const handleProviderChange = (newProvider: 'vello' | 'ollama') => {
+  const handleProviderChange = (newProvider: 'vello' | 'ollama' | 'manus') => {
     setProvider(newProvider)
     apiProvider.setProvider(newProvider)
     checkStatus()
   }
 
-  const handleVelloKeyChange = (key: string) => {
-    setVelloApiKey(key)
-    apiProvider.setVelloApiKey(key)
-  }
-
-  const handleOllamaUrlChange = (url: string) => {
-    setOllamaUrl(url)
-    apiProvider.setOllamaUrl(url)
-  }
-
   return (
     <div className="fixed bottom-4 right-4 z-50">
-      {/* Settings Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="p-3 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all"
@@ -67,138 +60,71 @@ export default function APISettings() {
         <Settings size={20} />
       </button>
 
-      {/* Settings Panel */}
       {isOpen && (
         <div className="absolute bottom-16 right-0 w-96 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl p-6 space-y-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-white">API Settings</h3>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-slate-400 hover:text-white"
-            >
+            <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white">
               <X size={20} />
             </button>
           </div>
 
-          {/* Status */}
           <div className="bg-slate-800 rounded-lg p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-slate-300">Status:</span>
               <div className="flex items-center gap-2">
-                {isChecking ? (
-                  <Loader size={16} className="animate-spin text-blue-500" />
-                ) : isConnected ? (
-                  <Check size={16} className="text-green-500" />
-                ) : (
-                  <X size={16} className="text-red-500" />
-                )}
-                <span className={isConnected ? 'text-green-400' : 'text-red-400'}>
-                  {status}
-                </span>
+                {isChecking ? <Loader size={16} className="animate-spin text-blue-500" /> : isConnected ? <Check size={16} className="text-green-500" /> : <X size={16} className="text-red-500" />}
+                <span className={isConnected ? 'text-green-400' : 'text-red-400'}>{status}</span>
               </div>
             </div>
-            <div className="text-sm text-slate-400">
-              Models available: {modelCount}
-            </div>
-            <button
-              onClick={checkStatus}
-              disabled={isChecking}
-              className="w-full mt-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white rounded text-sm transition-colors"
-            >
+            <div className="text-sm text-slate-400">Models available: {modelCount}</div>
+            <button onClick={checkStatus} disabled={isChecking} className="w-full mt-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white rounded text-sm transition-colors">
               {isChecking ? 'Checking...' : 'Check Status'}
             </button>
           </div>
 
-          {/* Provider Selection */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-slate-300">
-              API Provider
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => handleProviderChange('vello')}
-                className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                  provider === 'vello'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                Vello.ai
-              </button>
-              <button
-                onClick={() => handleProviderChange('ollama')}
-                className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                  provider === 'ollama'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                Ollama Local
-              </button>
+            <label className="block text-sm font-medium text-slate-300">API Provider</label>
+            <div className="grid grid-cols-3 gap-2">
+              <button onClick={() => handleProviderChange('vello')} className={`px-2 py-2 rounded text-xs font-medium transition-colors ${provider === 'vello' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>Vello</button>
+              <button onClick={() => handleProviderChange('ollama')} className={`px-2 py-2 rounded text-xs font-medium transition-colors ${provider === 'ollama' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>Ollama</button>
+              <button onClick={() => handleProviderChange('manus')} className={`px-2 py-2 rounded text-xs font-medium transition-colors ${provider === 'manus' ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>Manus</button>
             </div>
           </div>
 
-          {/* Vello API Key */}
           {provider === 'vello' && (
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-300">
-                Vello API Key
-              </label>
-              <input
-                type="password"
-                value={velloApiKey}
-                onChange={(e) => handleVelloKeyChange(e.target.value)}
-                placeholder="Enter your Vello API key"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-              />
-              <p className="text-xs text-slate-400">
-                Get your API key from{' '}
-                <a
-                  href="https://vello.ai/api"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300"
-                >
-                  vello.ai/api
-                </a>
-              </p>
+              <label className="block text-sm font-medium text-slate-300">Vello API Key</label>
+              <input type="password" value={velloApiKey} onChange={(e) => { setVelloApiKey(e.target.value); apiProvider.setVelloApiKey(e.target.value); }} placeholder="Enter Vello key" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white focus:outline-none focus:border-blue-500" />
             </div>
           )}
 
-          {/* Ollama URL */}
           {provider === 'ollama' && (
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-300">
-                Ollama Server URL
-              </label>
-              <input
-                type="text"
-                value={ollamaUrl}
-                onChange={(e) => handleOllamaUrlChange(e.target.value)}
-                placeholder="http://localhost:11434"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
-              />
-              <p className="text-xs text-slate-400">
-                Make sure Ollama is running on your PC. Default: http://localhost:11434
-              </p>
+              <label className="block text-sm font-medium text-slate-300">Ollama URL</label>
+              <input type="text" value={ollamaUrl} onChange={(e) => { setOllamaUrl(e.target.value); apiProvider.setOllamaUrl(e.target.value); }} placeholder="http://localhost:11434" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white focus:outline-none focus:border-purple-500" />
             </div>
           )}
 
-          {/* Instructions */}
+          {provider === 'manus' && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-300">Manus API Key</label>
+              <input type="password" value={manusApiKey} onChange={(e) => { setManusApiKey(e.target.value); apiProvider.setManusApiKey(e.target.value); }} placeholder="Enter Manus key" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white focus:outline-none focus:border-orange-500" />
+            </div>
+          )}
+
           <div className="bg-slate-800 rounded-lg p-3 text-xs text-slate-400 space-y-1">
-            <p className="font-medium text-slate-300">Quick Setup:</p>
+            <p className="font-medium text-slate-300">Quick Fixes:</p>
             {provider === 'ollama' ? (
               <>
-                <p>1. Install Ollama from ollama.ai</p>
-                <p>2. Run: <code className="bg-slate-900 px-1 rounded">ollama serve</code></p>
-                <p>3. Pull models: <code className="bg-slate-900 px-1 rounded">ollama pull llama2</code></p>
+                <p>1. Set env var: <code className="bg-slate-900 px-1 rounded">OLLAMA_ORIGINS="*"</code></p>
+                <p>2. Restart Ollama app/service</p>
+                <p>3. Ensure model is pulled: <code className="bg-slate-900 px-1 rounded">ollama pull llama2</code></p>
               </>
+            ) : provider === 'manus' ? (
+              <p>Get your API key from <a href="https://manus.im" className="text-orange-400">manus.im</a></p>
             ) : (
-              <>
-                <p>1. Sign up at vello.ai</p>
-                <p>2. Get your API key</p>
-                <p>3. Paste it above</p>
-              </>
+              <p>Get your API key from <a href="https://vello.ai" className="text-blue-400">vello.ai</a></p>
             )}
           </div>
         </div>
