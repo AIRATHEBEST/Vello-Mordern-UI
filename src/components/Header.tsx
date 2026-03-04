@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useOverlayStore } from '../store/overlayStore'
-import { Sparkles, Settings, HelpCircle, Brain } from 'lucide-react'
+import { Sparkles, Settings, HelpCircle, Brain, Zap } from 'lucide-react'
 
 interface HeaderProps {
   onIntentDetection: (input: string) => void
@@ -33,6 +33,9 @@ export default function Header({ onIntentDetection }: HeaderProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            <button className="btn btn-ghost p-2" title="Capabilities" onClick={() => window.location.href = '/#/capabilities'}>
+              <Zap size={20} className="text-yellow-400" />
+            </button>
             <button className="btn btn-ghost p-2" title="Help">
               <HelpCircle size={20} />
             </button>
