@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "Vello AI Intelligence OS",
+  "version": "1.0.0",
+  "description": "Advanced AI Intelligence Operating System overlay for Vello.ai with intelligent model routing, specialized interfaces, and cognitive augmentation tools",
+  "author": "AIRATHEBEST",
+  "homepage_url": "https://github.com/AIRATHEBEST/Vello-Mordern-UI",
+  "icons": {
+    "16": "icons/icon-16.svg",
+    "48": "icons/icon-48.svg",
+    "128": "icons/icon-128.svg"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "webRequest",
+    "tabs",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "https://vello.ai/*",
+    "https://api.vello.ai/*",
+    "https://oredszasbvkvejvbooki.supabase.co/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://vello.ai/*"],
+      "js": ["content.js"],
+      "css": ["styles/overlay.css"],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Vello AI Intelligence OS"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["scripts/overlay.js", "styles/overlay.css"],
+      "matches": ["https://vello.ai/*"]
+    }
+  ],
+  "commands": {
+    "toggle-overlay": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+V",
+        "mac": "Command+Shift+V"
+      },
+      "description": "Toggle Vello AI Intelligence OS overlay"
+    }
+  }
+}

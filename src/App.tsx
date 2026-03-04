@@ -1,18 +1,30 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useOverlayStore } from './store/overlayStore'
 import { intentRouter } from './lib/intent-router'
 import Header from './components/Header'
 import ModelSelector from './components/ModelSelector'
 import SpecializedInterface from './components/SpecializedInterface'
+import MonitoringDashboard from './components/MonitoringDashboard'
+import { analytics } from './lib/analytics'
 import { Menu, X } from 'lucide-react'
 
 export default function App() {
   const [isInputFocused, setIsInputFocused] = useState(false)
   const { sidebarOpen, setSidebarOpen, selectedModel, setLastIntent } = useOverlayStore()
 
+  useEffect(() => {
+    analytics.trackEvent('app_loaded', {
+      timestamp: Date.now(),
+    })
+  }, [])
+
   const handleIntentDetection = (input: string) => {
     const analysis = intentRouter.analyzeIntent(input)
     setLastIntent(analysis)
+    analytics.trackEvent('intent_detected', {
+      intent: analysis.intent,
+      confidence: analysis.confidence,
+    })
   }
 
   return (
@@ -62,6 +74,7 @@ export default function App() {
           </div>
         </div>
       </div>
+      <MonitoringDashboard />
     </div>
   )
 }

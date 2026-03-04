@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vello AI Intelligence OS</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 450px;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+    }
+    
+    #root {
+      min-height: 600px;
+      overflow-y: auto;
+    }
+    
+    .header {
+      padding: 16px;
+      border-bottom: 1px solid #334155;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(10px);
+    }
+    
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .status {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    
+    .status.connected {
+      color: #86efac;
+    }
+    
+    .status.error {
+      color: #f87171;
+    }
+    
+    .content {
+      padding: 16px;
+      space-y: 12px;
+    }
+    
+    .model-list {
+      space-y: 8px;
+    }
+    
+    .model-item {
+      padding: 12px;
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid #334155;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .model-item:hover {
+      background: rgba(30, 41, 59, 0.8);
+      border-color: #475569;
+    }
+    
+    .model-name {
+      font-weight: 500;
+      color: #e2e8f0;
+    }
+    
+    .model-provider {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🚀 Vello AI OS</h1>
+    <div class="status connected">✓ Connected to Vello.ai</div>
+  </div>
+  
+  <div id="root" class="content">
+    <div style="text-align: center; padding: 20px; color: #94a3b8;">
+      <p>Loading models...</p>
+    </div>
+  </div>
+
+  <script src="scripts/popup.js"></script>
+</body>
+</html>
