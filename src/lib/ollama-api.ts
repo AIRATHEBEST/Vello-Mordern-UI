@@ -108,15 +108,23 @@ export class OllamaAPI {
   ): Promise<Response> {
     const isHttps = url.startsWith('https://')
     const isLocalHttp = url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')
+    const isNgrok = url.includes('ngrok')
 
     // Strategy 1: Direct fetch (works for HTTPS tunnels or local with CORS headers)
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      } as Record<string, string>
+
+      // ngrok free tier requires this header to bypass browser warning page
+      if (isNgrok) {
+        headers['ngrok-skip-browser-warning'] = 'true'
+      }
+
       const response = await fetch(url, {
         ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
+        headers,
         mode: 'cors',
       })
       return response
@@ -165,9 +173,11 @@ export class OllamaAPI {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 5000)
 
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
       const response = await fetch(`${url}/api/tags`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         mode: 'cors',
         signal: controller.signal,
       })
@@ -261,9 +271,11 @@ export class OllamaAPI {
     const url = this.getBaseUrl()
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
       const response = await fetch(`${url}/api/tags`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         mode: 'cors',
         signal: AbortSignal.timeout(5000),
       })
@@ -302,9 +314,11 @@ export class OllamaAPI {
     const url = this.getBaseUrl()
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
       const response = await fetch(`${url}/api/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         mode: 'cors',
         body: JSON.stringify({
           model: modelName,
@@ -344,9 +358,11 @@ export class OllamaAPI {
   ): AsyncGenerator<string, void, unknown> {
     const url = this.getBaseUrl()
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
     const response = await fetch(`${url}/api/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       mode: 'cors',
       body: JSON.stringify({
         model: modelName,
@@ -398,9 +414,11 @@ export class OllamaAPI {
    */
   async pullModel(modelName: string): Promise<void> {
     const url = this.getBaseUrl()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
     const response = await fetch(`${url}/api/pull`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       mode: 'cors',
       body: JSON.stringify({ name: modelName, stream: false }),
     })
@@ -415,9 +433,11 @@ export class OllamaAPI {
    */
   async deleteModel(modelName: string): Promise<void> {
     const url = this.getBaseUrl()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
     const response = await fetch(`${url}/api/delete`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       mode: 'cors',
       body: JSON.stringify({ name: modelName }),
     })

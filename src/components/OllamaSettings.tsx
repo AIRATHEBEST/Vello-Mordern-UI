@@ -40,7 +40,8 @@ export default function OllamaSettings({ onModelSelect, selectedModel }: OllamaS
     const savedUrl = localStorage.getItem('ollama_base_url') || 'http://localhost:11434'
     const isRemote = localStorage.getItem('ollama_is_remote') === 'true'
 
-    if (isRemote && savedUrl.startsWith('https://')) {
+    // Auto-detect ngrok URL and switch to Tunnel mode
+    if (savedUrl.includes('ngrok') || (isRemote && savedUrl.startsWith('https://'))) {
       setMode('remote')
       setRemoteUrl(savedUrl)
     } else {
