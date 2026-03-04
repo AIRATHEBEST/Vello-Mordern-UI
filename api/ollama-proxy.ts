@@ -33,8 +33,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing url parameter' })
     }
 
-    // Validate that the URL is an ngrok tunnel or localhost
-    if (!targetUrl.includes('ngrok') && !targetUrl.includes('localhost') && !targetUrl.includes('127.0.0.1')) {
+    // Validate that the URL is a tunnel or localhost (ngrok, localtunnel, zrok, cloudflare, localhost)
+    const isValidTunnel = targetUrl.includes('ngrok') || 
+                          targetUrl.includes('loca.lt') ||  // LocalTunnel
+                          targetUrl.includes('zrok') ||
+                          targetUrl.includes('cloudflare') ||
+                          targetUrl.includes('localhost') || 
+                          targetUrl.includes('127.0.0.1')
+    
+    if (!isValidTunnel) {
       return res.status(400).json({ error: 'Invalid target URL' })
     }
 
