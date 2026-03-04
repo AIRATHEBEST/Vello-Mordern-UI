@@ -45,8 +45,14 @@ export default function OllamaSettings({ onModelSelect, selectedModel }: OllamaS
 
     setUseCORSProxy(savedUseCORSProxy)
 
-    // Auto-detect ngrok URL and switch to Tunnel mode
-    if (savedUrl.includes('ngrok') || (isRemote && savedUrl.startsWith('https://'))) {
+    // Auto-detect tunnel URLs and switch to Tunnel mode
+    const isTunnelUrl = savedUrl.includes('ngrok') ||
+      savedUrl.includes('loca.lt') ||
+      savedUrl.includes('zrok') ||
+      savedUrl.includes('trycloudflare.com') ||
+      savedUrl.includes('cloudflare') ||
+      (isRemote && savedUrl.startsWith('https://'))
+    if (isTunnelUrl) {
       setMode('remote')
       setRemoteUrl(savedUrl)
     } else {
@@ -174,7 +180,7 @@ export default function OllamaSettings({ onModelSelect, selectedModel }: OllamaS
       {mode === 'remote' && (
         <div className="space-y-2">
           <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider">
-            Tunnel URL (ngrok / zrok / Cloudflare)
+            Tunnel URL (LocalTunnel / ngrok / zrok / Cloudflare)
           </label>
           <div className="flex gap-2">
             <input
@@ -182,7 +188,7 @@ export default function OllamaSettings({ onModelSelect, selectedModel }: OllamaS
               value={remoteUrl}
               onChange={(e) => setRemoteUrl(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCheck()}
-              placeholder="https://your-tunnel.ngrok.io"
+              placeholder="https://abc123.loca.lt or https://your-tunnel.ngrok.io"
               className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30"
             />
             <button
@@ -400,21 +406,32 @@ export default function OllamaSettings({ onModelSelect, selectedModel }: OllamaS
                 Choose a tunnel service to securely expose your local Ollama to the internet.
               </p>
 
+              {/* LocalTunnel - Recommended */}
+              <div className="space-y-1 rounded bg-purple-900/30 border border-purple-700/40 p-2">
+                <p className="font-semibold text-purple-300">⭐ Option 1: LocalTunnel (Recommended — No Account)</p>
+                <ol className="list-decimal list-inside space-y-0.5 text-slate-400">
+                  <li>Install: <code className="bg-slate-950 px-1 rounded text-purple-300">npm install -g localtunnel</code></li>
+                  <li>Run: <code className="bg-slate-950 px-1 rounded text-purple-300">lt --port 11434</code></li>
+                  <li>Copy the URL (e.g., <code className="bg-slate-950 px-1 rounded text-purple-300">https://abc123.loca.lt</code>)</li>
+                  <li>Paste it above and click <strong>Connect</strong></li>
+                </ol>
+                <p className="text-slate-500 text-xs mt-1">If you see a "Bypass" page, click "Click to Continue" once in your browser.</p>
+              </div>
+
               {/* ngrok */}
               <div className="space-y-1 rounded bg-slate-800 p-2">
-                <p className="font-semibold text-slate-200">Option 1: ngrok (Easiest)</p>
+                <p className="font-semibold text-slate-200">Option 2: ngrok</p>
                 <ol className="list-decimal list-inside space-y-0.5 text-slate-400">
                   <li>Sign up at <a href="https://ngrok.com" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">ngrok.com</a></li>
                   <li>Download ngrok and get your auth token</li>
                   <li>Run: <code className="bg-slate-950 px-1 rounded text-purple-300">ngrok http 11434</code></li>
-                  <li>Copy the HTTPS URL (e.g., <code className="bg-slate-950 px-1 rounded text-purple-300">https://abc123.ngrok.io</code>)</li>
-                  <li>Paste it above and click <strong>Connect</strong></li>
+                  <li>Copy the HTTPS URL and paste it above</li>
                 </ol>
               </div>
 
               {/* zrok */}
               <div className="space-y-1 rounded bg-slate-800 p-2">
-                <p className="font-semibold text-slate-200">Option 2: zrok (Open Source)</p>
+                <p className="font-semibold text-slate-200">Option 3: zrok (Open Source)</p>
                 <ol className="list-decimal list-inside space-y-0.5 text-slate-400">
                   <li>Install zrok: <CopyableCommand cmd="brew install zrok" copiedCommand={copiedCommand} onCopy={copyCommand} inline /></li>
                   <li>Run: <code className="bg-slate-950 px-1 rounded text-purple-300">zrok share http 11434</code></li>
@@ -424,7 +441,7 @@ export default function OllamaSettings({ onModelSelect, selectedModel }: OllamaS
 
               {/* Cloudflare */}
               <div className="space-y-1 rounded bg-slate-800 p-2">
-                <p className="font-semibold text-slate-200">Option 3: Cloudflare Tunnel</p>
+                <p className="font-semibold text-slate-200">Option 4: Cloudflare Tunnel</p>
                 <ol className="list-decimal list-inside space-y-0.5 text-slate-400">
                   <li>Install cloudflared: <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">Download</a></li>
                   <li>Run: <code className="bg-slate-950 px-1 rounded text-purple-300">cloudflared tunnel --url http://localhost:11434</code></li>

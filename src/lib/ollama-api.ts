@@ -78,6 +78,7 @@ export class OllamaAPI {
 
   constructor(baseUrl: string = 'http://localhost:11434') {
     this.baseUrl = baseUrl.replace(/\/$/, '')
+    // Any HTTPS URL is treated as a remote/tunnel URL
     this.isRemoteMode = baseUrl.startsWith('https://')
     // Auto-enable CORS proxy for ngrok URLs with CORS issues
     const savedUseCORSProxy = localStorage.getItem('ollama_use_cors_proxy')
@@ -86,6 +87,7 @@ export class OllamaAPI {
 
   setBaseUrl(url: string) {
     this.baseUrl = url.replace(/\/$/, '')
+    // Detect tunnel URLs: any HTTPS URL is treated as remote/tunnel mode
     this.isRemoteMode = this.baseUrl.startsWith('https://')
     localStorage.setItem('ollama_base_url', this.baseUrl)
     localStorage.setItem('ollama_is_remote', String(this.isRemoteMode))
@@ -402,7 +404,8 @@ export class OllamaAPI {
     const url = this.getBaseUrl()
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    const response = await fetch(`${url}/api/chat`, {
+    const apiUrl = this.wrapWithVercelProxy(`${url}/api/chat`) || `${url}/api/chat`
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers,
       mode: 'cors',
