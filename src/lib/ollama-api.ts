@@ -214,7 +214,7 @@ export class OllamaAPI {
       const timeoutId = setTimeout(() => controller.abort(), 5000)
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
+
       const apiUrl = this.wrapWithVercelProxy(`${url}/api/tags`) || this.wrapWithCORSProxy(`${url}/api/tags`)
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -313,7 +313,7 @@ export class OllamaAPI {
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
+
       const apiUrl = this.wrapWithVercelProxy(`${url}/api/tags`) || this.wrapWithCORSProxy(`${url}/api/tags`)
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -357,7 +357,7 @@ export class OllamaAPI {
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
+
       const apiUrl = this.wrapWithVercelProxy(`${url}/api/chat`) || `${url}/api/chat`
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -402,7 +402,6 @@ export class OllamaAPI {
     const url = this.getBaseUrl()
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
     const response = await fetch(`${url}/api/chat`, {
       method: 'POST',
       headers,
@@ -458,7 +457,6 @@ export class OllamaAPI {
   async pullModel(modelName: string): Promise<void> {
     const url = this.getBaseUrl()
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
     const response = await fetch(`${url}/api/pull`, {
       method: 'POST',
       headers,
@@ -477,7 +475,6 @@ export class OllamaAPI {
   async deleteModel(modelName: string): Promise<void> {
     const url = this.getBaseUrl()
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (url.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true'
     const response = await fetch(`${url}/api/delete`, {
       method: 'DELETE',
       headers,

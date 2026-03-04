@@ -49,7 +49,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       method: req.method,
       headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true',
         'User-Agent': 'Vello-Ollama-Proxy/1.0',
       },
       body,
